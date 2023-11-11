@@ -1,0 +1,32 @@
+■P014
+
+────────────────
+<?php
+
+try {
+    $pdo = new PDO('mysql:dbname=example_app;host=mysql:3306', 'user', 'password', [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    ]);
+    $stmt = $pdo->query('SELECT * FROM users');
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rows as $row) {
+        echo $row['name'], '</br>';
+    }
+} catch (PDOException $e) {
+    exit($e->getMessage());
+}
+────────────────
+
+
+────────────────
+<?php
+
+use App\Models\User;
+
+…クラス定義等の形式的な記述は省略…
+
+$users = User::all();
+foreach($users as $user) {
+    echo $user->name . '</br>';
+}
+────────────────

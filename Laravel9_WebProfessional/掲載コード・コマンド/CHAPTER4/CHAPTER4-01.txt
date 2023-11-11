@@ -1,0 +1,541 @@
+■P175
+
+●.env
+────────────────
+MAIL_FROM_ADDRESS="info@example.com"
+────────────────
+
+
+●docker-compose.yml
+────────────────
+mailhog:
+        image: 'mailhog/mailhog:latest'
+        ports:
+            - '${FORWARD_MAILHOG_PORT:-1025}:1025'
+            - '${FORWARD_MAILHOG_DASHBOARD_PORT:-8025}:8025'
+────────────────
+
+
+■P176
+
+────────────────
+http://localhost/forgot-password
+────────────────
+
+
+■P177
+
+●config/mail.php
+────────────────
+<?php
+
+return [
+
+    /*
+    |-----------------------------------------------------------------------
+    | Default Mailer
+    |-----------------------------------------------------------------------
+    |
+    |…省略…
+    |
+    */
+    'default' => env('MAIL_MAILER', 'smtp'),
+
+    /*
+    |-----------------------------------------------------------------------
+    | Mailer Configurations
+    |-----------------------------------------------------------------------
+    |
+    |…省略…
+    |
+    */
+
+    'mailers' => [
+        'smtp' => [
+            'transport' => 'smtp',
+            'host' => env('MAIL_HOST', 'smtp.mailgun.org'),
+            'port' => env('MAIL_PORT', 587),
+            'encryption' => env('MAIL_ENCRYPTION', 'tls'),
+            'username' => env('MAIL_USERNAME'),
+            'password' => env('MAIL_PASSWORD'),
+            'timeout' => null,
+            'auth_mode' => null,
+        ],
+
+        'ses' => [
+            'transport' => 'ses',
+        ],
+
+        'mailgun' => [
+            'transport' => 'mailgun',
+        ],
+
+        'postmark' => [
+            'transport' => 'postmark',
+        ],
+
+        'sendmail' => [
+            'transport' => 'sendmail',
+            'path' => env('MAIL_SENDMAIL_PATH', '/usr/sbin/sendmail -t -i'),
+
+        ],
+
+        'log' => [
+            'transport' => 'log',
+            'channel' => env('MAIL_LOG_CHANNEL'),
+        ],
+
+        'array' => [
+            'transport' => 'array',
+        ],
+    ],
+…省略…
+────────────────
+
+
+■P179
+
+●.env
+────────────────
+MAIL_MAILER=smtp
+MAIL_HOST=mailhog
+MAIL_PORT=1025
+MAIL_USERNAME=null
+MAIL_PASSWORD=null
+MAIL_ENCRYPTION=null
+MAIL_FROM_ADDRESS=info@example.com
+MAIL_FROM_NAME="${APP_NAME}"
+────────────────
+
+
+■P180
+
+●config/mail.php
+────────────────
+   /*
+    |-----------------------------------------------------------------------
+    | Global "From" Address
+    |-----------------------------------------------------------------------
+    |
+    |…省略…
+    |
+    */
+
+    'from' => [
+        'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
+        'name' => env('MAIL_FROM_NAME', 'Example'),
+    ],
+────────────────
+
+
+■P181
+
+────────────────
+sail artisan make:mail NewUserIntroduction
+────────────────
+
+
+●app/Mail/NewUserIntroduction.php
+────────────────
+<?php
+
+namespace App\Mail;
+
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Mail\Mailable;
+use Illuminate\Queue\SerializesModels;
+
+class NewUserIntroduction extends Mailable
+{
+    use Queueable, SerializesModels;
+
+    /**
+     * Create a new message instance.
+     *
+     * @return void
+     */
+    public function __construct()
+    {
+        //
+    }
+
+    /**
+     * Build the message.
+     *
+     * @return $this
+     */
+    public function build()
+    {
+        return $this->view('view.name');
+    }
+}
+────────────────
+
+
+■P182
+
+●app/Mail/NewUserIntroduction.php
+────────────────
+<?php
+
+namespace App\Mail;
+
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Mail\Mailable;
+use Illuminate\Queue\SerializesModels;
+
+class NewUserIntroduction extends Mailable
+{
+    use Queueable, SerializesModels;
+
+    public $subject = '新しいユーザーが追加されました！';
+
+    /**
+     * Create a new message instance.
+     *
+     * @return void
+     */
+    public function __construct()
+    {
+        //
+    }
+
+    /**
+     * Build the message.
+     *
+     * @return $this
+     */
+    public function build()
+    {
+        return $this->view('email.new_user_introduction');
+    }
+}
+────────────────
+
+
+■P183
+
+●resources/views/email/new_user_introduction.blade.php
+────────────────
+新しいユーザーが追加されました
+────────────────
+
+
+●app/Http/Controllers/Auth/RegisteredUserController.php（全文）
+────────────────
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Providers\RouteServiceProvider;
+use Illuminate\Auth\Events\Registered;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules;
+use App\Mail\NewUserIntroduction;
+use Illuminate\Contracts\Mail\Mailer;
+
+class RegisteredUserController extends Controller
+{
+    /**
+     * Display the registration view.
+     *
+     * @return \Illuminate\View\View
+     */
+    public function create()
+    {
+        return view('auth.register');
+    }
+
+    /**
+     * Handle an incoming registration request.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     *
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    public function store(Request $request, Mailer $mailer)
+    {
+        $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ]);
+
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+        ]);
+
+        event(new Registered($user));
+
+        Auth::login($user);
+
+        // メールの送信処理を追加
+        $mailer->to('test@example.com')
+            ->send(new NewUserIntroduction());
+
+        return redirect(RouteServiceProvider::HOME);
+    }
+}
+────────────────
+
+
+■P185
+
+●app/Http/Controllers/Auth/RegisteredUserController.php（store関数全体）
+────────────────
+    public function store(Request $request, Mailer $mailer)
+    {
+        $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ]);
+
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+        ]);
+
+        event(new Registered($user));
+
+        Auth::login($user);
+
+        // メールの送信処理を追加
+        $allUser = User::get();
+        foreach ($allUser as $user) {
+            $mailer->to($user->email)
+                ->send(new NewUserIntroduction());
+        }
+
+        return redirect(RouteServiceProvider::HOME);
+    }
+────────────────
+
+
+■P186
+
+●app/Mail/NewUserIntroduction.php
+────────────────
+<?php
+
+namespace App\Mail;
+
+use App\Models\User;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Mail\Mailable;
+use Illuminate\Queue\SerializesModels;
+
+class NewUserIntroduction extends Mailable
+{
+    use Queueable, SerializesModels;
+
+    public $subject = '新しいユーザーが追加されました！';
+    public User $toUser;
+    public User $newUser;
+
+    /**
+     * Create a new message instance.
+     *
+     * @return void
+     */
+    public function __construct(User $toUser, User $newUser)
+    {
+        $this->toUser = $toUser;
+        $this->newUser = $newUser;
+    }
+
+    /**
+     * Build the message.
+     *
+     * @return $this
+     */
+    public function build()
+    {
+        return $this->view('email.new_user_introduction');
+    }
+}
+────────────────
+
+
+■P187
+
+●app/Http/Controllers/Auth/RegisteredUserController.php
+────────────────
+   /**
+     * Handle an incoming registration request.
+     * …省略…
+     */
+    public function store(Request $request, Mailer $mailer)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ]);
+
+        $newUser = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+        ]);
+
+        event(new Registered($newUser));
+
+        Auth::login($newUser);
+
+        $allUser = User::get();
+        foreach ($allUser as $user) {
+            $mailer->to($user->email)
+                ->send(new NewUserIntroduction($user, $newUser));
+        }
+
+        return redirect(RouteServiceProvider::HOME);
+    }
+────────────────
+
+
+■P188
+
+●resources/views/email/new_user_introduction.blade.php
+────────────────
+{{ $toUser->name }}さんこんにちは！新しく{{ $newUser->name }}さんが参加しましたよ！
+────────────────
+
+
+■P189
+
+●resources/views/email/new_user_introduction.blade.php
+────────────────
+@component('mail::message')
+
+# 新しいユーザーが追加されました！
+
+{{ $toUser->name }}さんこんにちは！
+
+新しく{{ $newUser->name }}さんが参加しましたよ！
+
+@endcomponent
+────────────────
+
+
+●app/Mail/NewUserIntroduction.php（全文）
+────────────────
+<?php
+
+namespace App\Mail;
+
+use App\Models\User;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Mail\Mailable;
+use Illuminate\Queue\SerializesModels;
+
+class NewUserIntroduction extends Mailable
+{
+    use Queueable, SerializesModels;
+
+    public $subject = '新しいユーザーが追加されました！';
+    public User $toUser;
+    public User $newUser;
+
+    /**
+     * Create a new message instance.
+     *
+     * @return void
+     */
+    public function __construct(User $toUser, User $newUser)
+    {
+        $this->toUser = $toUser;
+        $this->newUser = $newUser;
+    }
+
+    /**
+     * Build the message.
+     *
+     * @return $this
+     */
+    public function build()
+    {
+        return $this->markdown('email.new_user_introduction');
+    }
+}
+────────────────
+
+
+■P190
+
+●resources/views/email/new_user_introduction.blade.php
+────────────────
+@component('mail::message')
+
+# 新しいユーザーが追加されました！
+
+{{ $toUser->name }}さんこんにちは！
+
+@component('mail::panel')
+    新しく{{ $newUser->name }}さんが参加しましたよ！
+@endcomponent
+
+@component('mail::button', ['url' => route('tweet.index')])
+    つぶやきを見に行く
+@endcomponent
+
+@endcomponent
+────────────────
+
+
+■P191
+
+────────────────
+sail artisan vendor:publish --tag=laravel-mail
+────────────────
+
+
+■P192
+
+●resources/views/vendor/mail/html/header.blade.php
+────────────────
+<tr>
+<td class="header">
+<a href="{{ $url }}" style="display: inline-block;">
+つぶやきアプリ
+</a>
+</td>
+</tr>
+────────────────
+
+
+●resources/views/vendor/mail/html/themes/default.css
+────────────────
+.wrapper {
+    …省略…
+    background-color: #fee3cf;
+    …省略…
+}
+
+.body {
+    …省略…
+    background-color: #fee3cf;
+    border-bottom: 1px solid #fee3cf;
+    border-top: 1px solid #fee3cf;
+    …省略…
+}
+
+.panel-content {
+    background-color: #fee3cf;
+    color: #718096;
+    …省略…
+}
+────────────────
+

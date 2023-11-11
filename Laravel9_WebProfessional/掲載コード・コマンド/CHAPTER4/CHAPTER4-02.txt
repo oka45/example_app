@@ -1,0 +1,265 @@
+■P194
+
+────────────────
+sail artisan make:job SampleJob
+────────────────
+
+■P195
+
+●app/Jobs/SampleJob.php
+────────────────
+<?php
+
+namespace App\Jobs;
+
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+
+class SampleJob implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    /**
+     * Create a new job instance.
+     *
+     * @return void
+     */
+    public function __construct()
+    {
+        //
+    }
+
+    /**
+     * Execute the job.
+     *
+     * @return void
+     */
+    public function handle()
+    {
+        //
+    }
+}
+────────────────
+
+
+■P196
+
+●app/Jobs/SampleJob.php
+────────────────
+    /**
+     * Execute the job.
+     *
+     * @return void
+     */
+    public function handle()
+    {
+        echo 'Jobを実行しました。';
+    }
+────────────────
+
+
+────────────────
+sail artisan tinker
+────────────────
+
+────────────────
+\Bus::dispatchSync(new App\Jobs\SampleJob());
+────────────────
+
+
+■P197
+
+●config/queue.php
+────────────────
+<?php
+
+return [
+
+    /*
+    |-----------------------------------------------------------------------
+    | Default Queue Connection Name
+    |-----------------------------------------------------------------------
+    |
+    | …省略…
+    |
+    */
+
+    'default' => env('QUEUE_CONNECTION', 'sync'),
+
+    /*
+    |-----------------------------------------------------------------------
+    | Queue Connections
+    |-----------------------------------------------------------------------
+    |
+    | …省略…
+    |
+    */
+
+    'connections' => [
+
+        'sync' => [
+            'driver' => 'sync',
+        ],
+        'database' => [
+            'driver' => 'database',
+            'table' => 'jobs',
+            'queue' => 'default',
+            'retry_after' => 90,
+            'after_commit' => false,
+        ],
+
+        'beanstalkd' => [
+            'driver' => 'beanstalkd',
+            'host' => 'localhost',
+            'queue' => 'default',
+            'retry_after' => 90,
+            'block_for' => 0,
+            'after_commit' => false,
+        ],
+
+        'sqs' => [
+            'driver' => 'sqs',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'prefix' => env('SQS_PREFIX', 'https://sqs.us-east-1.amazonaws.com/your-account-id'),
+            'queue' => env('SQS_QUEUE', 'default'),
+            'suffix' => env('SQS_SUFFIX'),
+            'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
+            'after_commit' => false,
+        ],
+
+        'redis' => [
+            'driver' => 'redis',
+            'connection' => 'default',
+            'queue' => env('REDIS_QUEUE', 'default'),
+            'retry_after' => 90,
+            'block_for' => null,
+            'after_commit' => false,
+        ],
+
+    ],
+    /*
+    |-----------------------------------------------------------------------
+    | Failed Queue Jobs
+    |-----------------------------------------------------------------------
+    |
+    | …省略…
+    |
+    */
+
+    'failed' => [
+        'driver' => env('QUEUE_FAILED_DRIVER', 'database-uuids'),
+        'database' => env('DB_CONNECTION', 'mysql'),
+        'table' => 'failed_jobs',
+    ],
+
+];
+────────────────
+
+
+■P199
+
+●.env
+────────────────
+…省略…
+QUEUE_CONNECTION=database
+…省略…
+────────────────
+
+
+■P200
+
+────────────────
+sail artisan queue:table
+────────────────
+
+────────────────
+sail artisan migrate
+────────────────
+
+────────────────
+sail artisan tinker
+────────────────
+
+────────────────
+\Bus::dispatch(new App\Jobs\SampleJob());
+────────────────
+
+
+■P201
+────────────────
+sail mysql
+────────────────
+
+────────────────
+select * from jobs;
+────────────────
+
+
+────────────────
+sail artisan queue:work
+────────────────
+
+────────────────
+sail mysql
+────────────────
+
+────────────────
+select * from jobs;
+────────────────
+
+
+
+■P202
+
+────────────────
+<?php
+
+namespace App\Mail;
+
+use App\Models\User;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Mail\Mailable;
+use Illuminate\Queue\SerializesModels;
+
+class NewUserIntroduction extends Mailable implements ShouldQueue
+{
+    use Queueable, SerializesModels;
+
+    public $subject = '新しいユーザーが追加されました！';
+    public User $toUser;
+    public User $newUser;
+
+    /**
+     * Create a new message instance.
+     * @return void
+     */
+    public function __construct(User $toUser, User $newUser)
+    {
+        $this->toUser = $toUser;
+        $this->newUser = $newUser;
+    }
+
+    /**
+     * Build the message.
+     *
+     * @return $this
+     */
+    public function build()
+    {
+        return $this->markdown('email.new_user_introduction');
+    }
+}
+────────────────
+
+
+■P203
+
+────────────────
+sail artisan queue:work
+────────────────

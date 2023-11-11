@@ -1,0 +1,266 @@
+■P018
+
+Laravel Homestead
+────────────────
+https://laravel.com/docs/9.x/homestead
+────────────────
+
+
+■P019
+
+────────────────
+https://www.docker.com/products/docker-desktop
+────────────────
+
+
+────────────────
+docker --version
+────────────────
+
+
+■P020
+
+────────────────
+https://www.docker.com/products/docker-desktop
+────────────────
+
+
+■P022
+
+────────────────
+https://aka.ms/wsl2kernel
+────────────────
+
+
+■P023
+
+────────────────
+wsl --set-version Ubuntu-20.04 2
+────────────────
+
+
+■P025
+
+────────────────
+sudo apt update && sudo apt upgrade -y
+────────────────
+
+────────────────
+sudo chmod 666 /var/run/docker.sock
+────────────────
+
+────────────────
+sudo apt-get install -y dos2unix
+────────────────
+
+────────────────
+find . -type f -print0 | xargs -0 dos2unix
+────────────────
+
+
+■P026
+
+────────────────
+curl -s "https://laravel.build/example-app?php=81" | bash
+────────────────
+
+
+■P027
+
+────────────────
+cd example-app
+────────────────
+
+────────────────
+./vendor/bin/sail up
+────────────────
+
+
+■P028
+
+●Macの場合:
+────────────────
+vim ~/.zshrc
+────────────────
+
+●Windowsの場合
+────────────────
+vi ~/.profile
+────────────────
+
+
+────────────────
+alias sail='[ -f sail ] && bash sail || bash vendor/bin/sail'
+────────────────
+
+
+●Macの場合
+────────────────
+source ~/.zshrc
+────────────────
+
+
+●Windowsの場合
+────────────────
+source ~/.profile
+────────────────
+
+
+────────────────
+sail up -d
+────────────────
+
+
+■P029
+
+────────────────
+sail down
+────────────────
+
+────────────────
+sail shell
+────────────────
+
+────────────────
+ls -la
+────────────────
+
+────────────────
+exit
+────────────────
+
+────────────────
+sail mysql
+────────────────
+
+────────────────
+exit
+────────────────
+
+
+■P030
+
+────────────────
+sail artisan -V
+────────────────
+
+
+
+■P031
+────────────────
+sail test
+────────────────
+
+────────────────
+sail php -v
+────────────────
+
+────────────────
+sail composer -V
+────────────────
+
+
+■P032
+
+────────────────
+sail node -v
+────────────────
+
+
+────────────────
+sail npm -v
+────────────────
+
+────────────────
+sail artisan sail:publish
+────────────────
+
+
+■P033
+────────────────
+FROM ubuntu:21.04
+
+LABEL maintainer="Taylor Otwell"
+
+ARG WWWGROUP
+ARG NODE_VERSION=16
+
+WORKDIR /var/www/html
+
+ENV DEBIAN_FRONTEND noninteractive
+ENV TZ=UTC
+────────────────
+
+
+■P034
+
+────────────────
+ENV TZ='Asia/Tokyo'
+────────────────
+
+────────────────
+sail build --no-cache
+────────────────
+
+────────────────
+sail shell
+────────────────
+
+────────────────
+date
+────────────────
+
+
+■P035
+
+●docker/8.1/my.cnf
+────────────────
+[mysqld]
+character-set-server = utf8mb4
+collation-server = utf8mb4_bin
+
+[client]
+default-character-set = utf8mb4
+────────────────
+
+●docker-compose.yml
+────────────────
+    mysql:
+        image: 'mysql/mysql-server:8.0'
+        ports:
+            - '${FORWARD_DB_PORT:-3306}:3306'
+        environment:
+            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_ROOT_HOST: "%"
+            MYSQL_DATABASE: '${DB_DATABASE}'
+            MYSQL_USER: '${DB_USERNAME}'
+            MYSQL_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_ALLOW_EMPTY_PASSWORD: 1
+        volumes:
+            - 'sail-mysql:/var/lib/mysql'
+            - './docker/8.1/my.cnf:/etc/my.cnf'
+────────────────
+
+
+■P036
+
+────────────────
+sail mysql
+────────────────
+
+────────────────
+show variables like '%char%';
+────────────────
+
+
+■P037
+
+────────────────
+docker run --rm \
+    -u "$(id -u):$(id -g)" \
+    -v $(pwd):/var/www/html \
+    -w /var/www/html \
+    laravelsail/php81-composer:latest \
+    composer install --ignore-platform-reqs
+────────────────
+

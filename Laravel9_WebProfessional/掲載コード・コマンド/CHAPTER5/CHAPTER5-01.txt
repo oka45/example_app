@@ -1,0 +1,630 @@
+■P247
+
+●実行すると現在のデータベースに存在するデータが削除されます
+────────────────
+sail test
+────────────────
+
+
+■P248
+
+●app/Services/TweetService.php（参照のみ）
+────────────────
+public function checkOwnTweet(int $userId, int $tweetId): bool
+{
+    $tweet = Tweet::where('id', $tweetId)->first();
+    if (!$tweet) {
+        return false;
+    }
+    return $tweet->user_id === $userId;
+}
+────────────────
+
+
+────────────────
+sail artisan make:test Services/TweetServiceTest --unit
+────────────────
+
+
+■P249
+
+●tests/Unit/Services/TweetServiceTest.php
+────────────────
+<?php
+
+namespace Tests\Unit\Services;
+
+use PHPUnit\Framework\TestCase;
+
+class TweetServiceTest extends TestCase
+{
+    /**
+     * A basic unit test example.
+     *
+     * @return void
+     */
+    public function test_example()
+    {
+        $this->assertTrue(true);
+    }
+}
+────────────────
+
+
+●tests/Unit/Services/TweetServiceTest.php
+────────────────
+class TweetServiceTest extends TestCase
+{
+    public function test_check_own_tweet()
+    {
+        $this->assertTrue(true);
+    }
+}
+────────────────
+
+
+■P250
+
+●tests/Unit/Services/TweetServiceTest.php
+────────────────
+<?php
+
+namespace Tests\Unit\Services;
+
+use PHPUnit\Framework\TestCase;
+use App\Services\TweetService;
+
+public function test_check_own_tweet()
+{
+    $tweetService = new TweetService(); // TweetServiceのインスタンスを作成
+    $this->assertTrue(true);
+}
+────────────────
+
+
+●tests/Unit/Services/TweetServiceTest.php
+────────────────
+public function test_check_own_tweet()
+{
+    $tweetService = new TweetService();
+
+    $result = $tweetService->checkOwnTweet(1, 1);
+    $this->assertTrue($result);
+}
+────────────────
+
+
+■P251
+
+●tests/Unit/Services/TweetServiceTest.php
+────────────────
+public function test_check_own_tweet()
+{
+    $tweetService = new TweetService();
+
+    $result = $tweetService->checkOwnTweet(1, 1);
+    $this->assertTrue($result);
+
+    $result = $tweetService->checkOwnTweet(2, 1);
+    $this->assertFalse($result);
+}
+────────────────
+
+
+■P252
+
+●tests/Unit/Services/TweetServiceTest.php（全文）
+────────────────
+<?php
+
+namespace Tests\Unit\Services;
+
+use PHPUnit\Framework\TestCase;
+use App\Services\TweetService;
+use Mockery;
+
+class TweetServiceTest extends TestCase
+{
+    /**
+     * @runInSeparateProcess
+     * @return void
+     */
+    public function test_check_own_tweet()
+    {
+        $tweetService = new TweetService();
+
+        $mock = Mockery::mock('alias:App\Models\Tweet');
+        $mock->shouldReceive('where->first')->andReturn((object)[
+            'id' => 1,
+            'user_id' => 1
+        ]);
+
+        $result = $tweetService->checkOwnTweet(1, 1);
+        $this->assertTrue($result);
+
+        $result = $tweetService->checkOwnTweet(2, 1);
+        $this->assertFalse($result);
+    }
+}
+────────────────
+
+
+■P253
+
+────────────────
+$mock->shouldReceive('where->first')->andReturn((object)[
+    'id' => 1,
+    'user_id' => 1
+]);
+────────────────
+
+
+────────────────
+sail test tests/Unit/Services/TweetServiceTest.php
+────────────────
+
+
+■P254
+
+●app/Http/Controllers/Tweet/DeleteController.php（参照のみ）
+────────────────
+public function __invoke(Request $request, TweetService $tweetService)
+{
+    $tweetId = (int) $request->route('tweetId');
+    if (!$tweetService->checkOwnTweet($request->user()->id, $tweetId)) { 
+        throw new AccessDeniedHttpException();
+    }
+    $tweetService->deleteTweet($tweetId);
+    return redirect()
+        ->route('tweet.index')
+        ->with('feedback.success', "つぶやきを削除しました");
+}
+────────────────
+
+
+
+■P255
+
+●docker-compose.yml
+────────────────
+…省略…
+    mysql:
+        …省略…
+    mysql.test:
+        image: 'mysql/mysql-server:8.0'
+        environment:
+            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_ROOT_HOST: "%"
+            MYSQL_DATABASE: '${DB_DATABASE}'
+            MYSQL_USER: '${DB_USERNAME}'
+            MYSQL_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_ALLOW_EMPTY_PASSWORD: 1
+        networks:
+            - sail
+        healthcheck:
+            test: [ "CMD", "mysqladmin", "ping", "-p${DB_PASSWORD}" ]
+            retries: 3
+            timeout: 5s
+    redis:
+        …省略…
+────────────────
+
+
+────────────────
+sail up -d
+────────────────
+
+■P256
+
+●phpunit.xml
+────────────────
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="CACHE_DRIVER" value="array"/>
+        <!-- <env name="DB_CONNECTION" value="sqlite"/> -->
+        <!-- <env name="DB_DATABASE" value=":memory:"/> -->
+        <env name="DB_HOST" value="mysql.test"/>
+        <env name="MAIL_MAILER" value="array"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="SESSION_DRIVER" value="array"/>
+        <env name="TELESCOPE_ENABLED" value="false"/>
+    </php>
+────────────────
+
+
+────────────────
+sail artisan make:test Tweet/DeleteTest
+────────────────
+
+
+●tests/Feature/Tweet/DeleteTest.php
+────────────────
+<?php
+
+namespace Tests\Feature\Tweet;
+
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\WithFaker;
+use Tests\TestCase;
+
+class DeleteTest extends TestCase
+{
+    /**
+     * A basic feature test example.
+     *
+     * @return void
+     */
+    public function test_example()
+    {
+        $response = $this->get('/');
+
+        $response->assertStatus(200);
+    }
+}
+────────────────
+
+
+■P257
+
+
+●tests/Feature/Tweet/DeleteTest.php
+────────────────
+class DeleteTest extends TestCase
+{
+    …省略…
+    public function test_delete_successed()
+    {
+        $response = $this->delete('/tweet/delete/1');
+
+        $response->assertRedirect('/tweet');
+    }
+}
+────────────────
+
+
+■P258
+
+────────────────
+sail test tests/Feature/Tweet/DeleteTest.php
+────────────────
+
+
+●tests/Feature/Tweet/DeleteTest.php
+────────────────
+class DeleteTest extends TestCase
+{
+    use RefreshDatabase;
+    …省略…
+
+    public function test_delete_successed()
+    {
+        $response = $this->delete('/tweet/delete/1');
+
+        $response->assertRedirect('/tweet');
+    }
+}
+────────────────
+
+
+■P259
+
+●tests/Feature/Tweet/DeleteTest.php
+────────────────
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\WithFaker;
+use Tests\TestCase;
+use App\Models\User;
+
+class DeleteTest extends TestCase
+{
+…省略…
+    public function test_delete_successed()
+    {
+        $user = User::factory()->create(); // ユーザーを作成
+
+        $response = $this->delete('/tweet/delete/1');
+
+        $response->assertRedirect('/tweet');
+    }
+}
+────────────────
+
+
+■P260
+
+●tests/Feature/Tweet/DeleteTest.php
+────────────────
+…省略…
+use Tests\TestCase;
+use App\Models\User;
+use App\Models\Tweet;
+
+…省略…
+    public function test_delete_successed()
+    {
+        $user = User::factory()->create();
+
+        $tweet = Tweet::factory()->create(['user_id' => $user->id]); // つぶやきを作成
+
+        $response = $this->delete('/tweet/delete/' . $tweet->id); // 作成したつぶやきIDを指定
+
+        $response->assertRedirect('/tweet');
+    }
+}
+────────────────
+
+
+●tests/Feature/Tweet/DeleteTest.php
+────────────────
+public function test_delete_successed()
+{
+    $user = User::factory()->create();
+
+    $tweet = Tweet::factory()->create(['user_id' => $user->id]);
+
+    $this->actingAs($user); // 指定したユーザーでログインした状態にする
+
+    $response = $this->delete('/tweet/delete/' . $tweet->id);
+
+    $response->assertRedirect('/tweet');
+}
+────────────────
+
+
+■P261
+
+────────────────
+sail test tests/Feature/Tweet/DeleteTest.php
+────────────────
+
+
+────────────────
+sail composer require --dev laravel/dusk
+────────────────
+
+────────────────
+sail artisan dusk:install
+────────────────
+
+
+■P262
+
+────────────────
+sail dusk
+────────────────
+
+●tests/Browser/ExampleTest.php
+────────────────
+<?php
+
+namespace Tests\Browser;
+
+use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Laravel\Dusk\Browser;
+use Tests\DuskTestCase;
+
+class ExampleTest extends DuskTestCase
+{
+    /**
+     * A basic browser test example.
+     *
+     * @return void
+     */
+    public function testBasicExample()
+    {
+        $this->browse(function (Browser $browser) {
+            $browser->visit('/')
+                    ->assertSee('Laravel');
+        });
+    }
+}
+────────────────
+
+
+■P263
+
+●tests/Browser/ExampleTest.php
+────────────────
+public function testBasicExample()
+{
+    $this->browse(function (Browser $browser) {
+    $browser->visit('/')
+            ->assertSee('Laravel')
+            ->assertSee('Hello!');
+    });
+}
+────────────────
+
+
+────────────────
+sail dusk
+────────────────
+
+
+────────────────
+        </div>
+        Hello!
+    </body>
+</html>
+────────────────
+
+
+■P265
+
+────────────────
+sail dusk
+────────────────
+
+
+■P266
+
+────────────────
+sail artisan dusk:make LoginTest
+────────────────
+
+●tests/Browser/LoginTest.php
+────────────────
+<?php
+
+namespace Tests\Browser;
+
+use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Laravel\Dusk\Browser;
+use Tests\DuskTestCase;
+
+class LoginTest extends DuskTestCase
+{
+    /**
+     * A Dusk test example.
+     *
+     * @return void
+     */
+    public function testExample()
+    {
+        $this->browse(function (Browser $browser) {
+            $browser->visit('/')
+                ->assertSee('Laravel');
+        });
+    }
+}
+────────────────
+
+
+●tests/Browser/LoginTest.php
+────────────────
+class LoginTest extends DuskTestCase
+{
+    …省略…
+    public function testSuccessfulLogin()
+    {
+        $this->browse(function (Browser $browser) {
+            $browser->visit('/login') // パスを変更する
+                ->assertSee('Laravel');
+        });
+    }
+}
+────────────────
+
+
+■P268
+
+●tests/Browser/LoginTest.php
+────────────────
+    public function testSuccessfulLogin()
+    {
+        $this->browse(function (Browser $browser) {
+            $browser->visit('/login')
+                ->type('email', 'test@example.com') // メールアドレスを入力する
+                ->assertSee('Laravel');
+        });
+    }
+────────────────
+
+
+●tests/Browser/LoginTest.php
+────────────────
+    public function testSuccessfulLogin()
+    {
+        $this->browse(function (Browser $browser) {
+            $browser->visit('/login')
+                ->type('email', 'test@example.com')
+                ->type('password', 'password') // パスワードを入力する
+                ->assertSee('Laravel');
+        });
+    }
+────────────────
+
+
+■P269
+
+●tests/Browser/LoginTest.php
+────────────────
+<?php
+
+namespace Tests\Browser;
+
+use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Laravel\Dusk\Browser;
+use Tests\DuskTestCase;
+use App\Models\User;
+
+class LoginTest extends DuskTestCase
+{
+    /**
+     * A Dusk test example.
+     *
+     * @return void
+     */
+    public function testSuccessfulLogin()
+    {
+        $this->browse(function (Browser $browser) {
+            $user = User::factory()->create(); // テスト用のユーザーを作成する
+            $browser->visit('/login')
+            ->type('email', $user->email) // テスト用のユーザーのメールアドレスを指定する
+                ->type('password', 'password')
+                ->assertSee('Laravel');
+        });
+    }
+}
+────────────────
+
+
+■P270
+
+●tests/Browser/LoginTest.php
+────────────────
+    public function testSuccessfulLogin()
+    {
+        $this->browse(function (Browser $browser) {
+            $user = User::factory()->create();
+            $browser->visit('/login')
+            ->type('email', $user->email)
+                ->type('password', 'password')
+                ->press('LOG IN') // 「LOG IN」ボタンをクリックする
+                ->assertSee('Laravel');
+        });
+    }
+────────────────
+
+
+●tests/Browser/LoginTest.php
+────────────────
+    public function testSuccessfulLogin()
+    {
+        $this->browse(function (Browser $browser) {
+            $user = User::factory()->create();
+            $browser->visit('/login')
+            ->type('email', $user->email)
+                ->type('password', 'password')
+                ->press('LOG IN')
+                ->assertPathIs('/tweet') // /tweetに遷移したことを確認する
+                ->assertSee('Laravel');
+        });
+    }
+────────────────
+
+
+■P271
+
+●tests/Browser/LoginTest.php
+────────────────
+    public function testSuccessfulLogin()
+    {
+        $this->browse(function (Browser $browser) {
+            $user = User::factory()->create();
+            $browser->visit('/login')
+            ->type('email', $user->email)
+                ->type('password', 'password')
+                ->press('LOG IN')
+                ->assertPathIs('/tweet')
+                ->assertSee('つぶやきアプリ'); // ページ内に「つぶやきアプリ」が表示されていることの確認
+        });
+    }
+────────────────
+
+
+────────────────
+sail dusk
+────────────────
+

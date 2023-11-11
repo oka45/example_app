@@ -1,0 +1,237 @@
+■P071
+
+────────────────
+sail artisan make:controller Tweet/CreateController --invokable
+────────────────
+
+────────────────
+sail artisan make:request Tweet/CreateRequest
+────────────────
+
+
+■P072
+
+●app/Http/Requests/Tweet/CreateRequest.php
+────────────────
+<?php
+
+namespace App\Http\Requests\Tweet;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class CreateRequest extends FormRequest
+{
+    /**
+     * Determine if the user is authorized to make this request.
+     *
+     * @return bool
+     */
+    public function authorize()
+    {
+        return false;
+    }
+
+    /**
+     * Get the validation rules that apply to the request.
+     *
+     * @return array
+     */
+    public function rules()
+    {
+        return [
+            //
+        ];
+    }
+}
+────────────────
+
+
+■P073
+
+●app/Http/Requests/Tweet/CreateRequest.php
+────────────────
+    public function authorize()
+    {
+        return true;
+    }
+
+    public function rules()
+    {
+        return [
+            'tweet' => 'required|max:140'
+        ];
+    }
+────────────────
+
+
+■P074
+
+●app/Http/Controllers/Tweet/CreateController.php
+────────────────
+<?php
+
+namespace App\Http\Controllers\Tweet;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Tweet\CreateRequest;
+
+class CreateController extends Controller
+{
+    public function __invoke(CreateRequest $request)
+    {
+        //
+    }
+}
+────────────────
+
+
+●routes/web.php
+────────────────
+Route::post('/tweet/create', \App\Http\Controllers\Tweet\CreateController::class);
+────────────────
+
+■P075
+
+●routes/web.php
+────────────────
+Route::get('/tweet', \App\Http\Controllers\Tweet\IndexController::class) ->name('tweet.index');
+Route::post('/tweet/create', \App\Http\Controllers\Tweet\CreateController::class) ->name('tweet.create');
+────────────────
+
+
+●resources/views/tweet/index.blade.php（ここでは<body>〜</body>の全体を掲載）
+────────────────
+<body>
+    <h1>つぶやきアプリ</h1>
+    <div>
+        <p>投稿フォーム</p>
+        <form action="{{ route('tweet.create') }}" method="post">
+            @csrf
+            <label for="tweet-content">つぶやき</label>
+            <span>140文字まで</span>
+            <textarea id="tweet-content" type="text" name="tweet" placeholder="つぶやきを入力"></textarea>
+            <button type="submit">投稿</button>
+        </form>
+    </div>
+    <div>
+    @foreach($tweets as $tweet)
+        <p>{{ $tweet->content }}</p>
+    @endforeach
+    </div>
+</body>
+────────────────
+
+
+■P076
+
+────────────────
+<form action="{{ route('tweet.create') }}" method="post">
+────────────────
+
+────────────────
+<textarea id="tweet-content" type="text" name="tweet" placeholder="つぶやきを入力"></textarea>
+────────────────
+
+────────────────
+<input type="hidden" name="_token" value="xZPyILblC4GXVFqP3h6ZXQpoQtts8mzsJsAm4YBi">
+────────────────
+
+
+■P077
+
+●resources/views/tweet/index.blade.php
+────────────────
+            <textarea id="tweet-content" type="text" name="tweet" placeholder="つぶやきを入力"></textarea>
+            @error('tweet')
+            <p style="color: red;">{{ $message }}</p>
+            @enderror
+────────────────
+
+
+────────────────
+@error('email', 'login')
+────────────────
+
+
+■P078
+
+●config/app.php
+────────────────
+    'locale' => 'ja',
+    // 省略
+    'fallback_locale' => 'ja',
+────────────────
+
+
+────────────────
+sail composer require laravel-lang/lang:~10.3
+────────────────
+
+
+■P079
+
+────────────────
+cp -R vendor/laravel-lang/lang/locales/ja lang/ja
+────────────────
+
+●lang/ja/validation.php
+────────────────
+	],
+    'attributes' => [
+        'tweet' => 'つぶやき'
+    ],
+];
+────────────────
+
+
+■P080
+
+●app/Http/Requests/Tweet/CreateRequest.php
+────────────────
+    public function tweet(): string
+    {
+    return $this->input('tweet');
+    }
+────────────────
+
+
+●app/Http/Controllers/Tweet/CreateController.php（省略してない状態）
+────────────────
+<?php
+
+namespace App\Http\Controllers\Tweet;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Tweet\CreateRequest;
+use App\Models\Tweet;
+
+class CreateController extends Controller
+{
+    /**
+     * Handle the incoming request.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function __invoke(CreateRequest $request)
+    {
+        $tweet = new Tweet;
+        $tweet->content = $request->tweet();
+        $tweet->save();
+        return redirect()->route('tweet.index');
+    }
+}
+────────────────
+
+
+■P082
+
+●app/Http/Controllers/Tweet/IndexController.php
+────────────────
+$tweets = Tweet::orderBy('created_at', 'DESC')->get();
+────────────────
+
+────────────────
+$tweets = Tweet::all()->sortByDesc('created_at');
+────────────────
+

@@ -1,0 +1,664 @@
+■P041
+
+────────────────
+sail artisan make:controller Sample/IndexController
+────────────────
+
+●app/Http/Controllers/Sample/IndexController.php
+────────────────
+<?php
+
+namespace App\Http\Controllers\Sample;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+
+class IndexController extends Controller
+{
+    //
+}
+────────────────
+
+
+■P042
+
+●app/Http/Controllers/Sample/IndexController.php
+────────────────
+<?php
+
+namespace App\Http\Controllers\Sample;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+
+class IndexController extends Controller
+{
+    public function show()
+    {
+        return 'Hello';
+    }
+}
+────────────────
+
+
+●routes/web.php
+────────────────
+Route::get('/sample', [\App\Http\Controllers\Sample\IndexController::class, 'show']);
+────────────────
+
+
+■P043
+
+●app/Http/Controllers/Sample/IndexController.php
+────────────────
+class IndexController extends Controller
+{
+    public function show()
+    {
+        return 'Hello';
+    }
+    public function showId($id)
+    {
+        return "Hello {$id}";
+    }
+}
+────────────────
+
+●routes/web.php
+────────────────
+Route::get('/sample/{id}', [\App\Http\Controllers\Sample\IndexController::class, 'showId']);
+────────────────
+
+
+■P044
+
+────────────────
+sail artisan make:controller Tweet/IndexController --invokable
+────────────────
+
+
+■P045
+
+●app/Http/Controllers/Tweet/IndexController.php
+────────────────
+<?php
+
+namespace App\Http\Controllers\Tweet;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+
+class IndexController extends Controller
+{
+    /**
+     * Handle the incoming request.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function __invoke(Request $request)
+    {
+        //
+    }
+}
+────────────────
+
+
+●app/Http/Controllers/Tweet/IndexController.php
+────────────────
+public function __invoke(Request $request)
+{
+    return 'Single Action!';
+}
+────────────────
+
+
+■P046
+
+●routes/web.php
+────────────────
+Route::get('/tweet', \App\Http\Controllers\Tweet\IndexController::class);
+────────────────
+
+
+
+■P047
+
+────────────────
+<?php
+$javaScriptCode = "<script>alert('xss');</script>";
+?>
+{{ $javaScriptCode }}
+────────────────
+
+
+────────────────
+<?php
+$javaScriptCode = "<script>alert('xss');</script>";
+?>
+{!! $javaScriptCode !!}
+────────────────
+
+
+■P048
+
+●resources/views/tweet/index.blade.php
+────────────────
+<!doctype html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>つぶやきアプリ</title>
+</head>
+<body>
+    <h1>つぶやきアプリ</h1>
+    <p>{{ $name }}</p>
+</body>
+</html>
+────────────────
+
+●app/Http/Controllers/Tweet/IndexController.php
+────────────────
+public function __invoke(Request $request)
+{
+    return view('tweet.index', ['name' => 'laravel']);
+}
+────────────────
+
+
+■P049
+
+────────────────
+    use Illuminate\Support\Facades\View;
+
+    class IndexController extends Controller
+    {
+        public function __invoke(Request $request)
+        {
+            return View::make('tweet.index', ['name' => 'laravel']);
+        }
+    }
+────────────────
+
+
+■P050
+
+────────────────
+    use Illuminate\View\Factory;
+
+    class IndexController extends Controller
+    {
+        public function __invoke(Request $request, Factory $factory)
+        {
+            return $factory->make('tweet.index', ['name' => 'laravel']);
+        }
+    }
+────────────────
+
+
+────────────────
+return view('tweet.index')->with('name', 'laravel');
+────────────────
+
+
+────────────────
+return view('tweet.index')
+            ->with('name', 'laravel')
+            ->with('version', '8');
+────────────────
+
+
+■P051
+
+────────────────
+sail mysql
+────────────────
+
+
+────────────────
+select version();
+────────────────
+
+
+■P052
+
+────────────────
+show databases;
+────────────────
+
+────────────────
+show tables from example_app;
+────────────────
+
+────────────────
+sail artisan make:migration create_tweets_table
+────────────────
+
+
+■P053
+
+●database/migrations/yyyy_mm_dd_◯◯◯◯_create_tweets_table.php
+────────────────
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     *
+     * @return void
+     */
+    public function up()
+    {
+        Schema::create('tweets', function (Blueprint $table) {
+            $table->id();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     *
+     * @return void
+     */
+    public function down()
+    {
+        Schema::dropIfExists('tweets');
+    }
+};
+────────────────
+
+
+■P054
+
+●database/migrations/yyyy_mm_dd_◯◯◯◯_create_tweets_table.php
+────────────────
+    public function up()
+    {
+        Schema::create('tweets', function (Blueprint $table) {
+            $table->id();
+            $table->string('content');
+            $table->timestamps();
+        });
+    }
+────────────────
+
+
+■P055
+
+────────────────
+sail artisan migrate
+────────────────
+
+────────────────
+sail mysql
+────────────────
+
+────────────────
+show tables from example_app;
+────────────────
+
+
+■P056
+
+────────────────
+use example_app;
+────────────────
+
+────────────────
+show columns from tweets;
+────────────────
+
+
+■P057
+
+────────────────
+sail artisan make:seeder TweetsSeeder
+────────────────
+
+
+●database/seeders/TweetsSeeder.php
+────────────────
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Database\Seeder;
+
+class TweetsSeeder extends Seeder
+{
+    /**
+     * Run the database seeds.
+     *
+     * @return void
+     */
+    public function run()
+    {
+        //
+    }
+}
+────────────────
+
+
+●database/seeders/TweetsSeeder.php
+────────────────
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
+
+class TweetsSeeder extends Seeder
+{
+    public function run()
+    {
+        DB::table('tweets')->insert([
+            'content' => Str::random(100),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+}
+────────────────
+
+
+■P058
+
+●database/seeder/DatabaseSeeder.php
+────────────────
+public function run()
+{
+    // \App\Models\User::factory(10)->create();
+    $this->call([TweetsSeeder::class]);
+}
+────────────────
+
+
+────────────────
+sail artisan db:seed
+────────────────
+
+
+────────────────
+sail artisan db:seed --class=TweetsSeeder
+────────────────
+
+
+■P059
+
+────────────────
+sail mysql
+────────────────
+
+────────────────
+use example_app;
+────────────────
+
+────────────────
+select * from tweets;
+────────────────
+
+────────────────
+truncate table tweets;
+────────────────
+
+
+■P060
+
+────────────────
+sail artisan make:model Tweet
+────────────────
+
+
+────────────────
+sail artisan make:model Tweet --migration
+────────────────
+sail artisan make:model Tweet -m
+────────────────
+
+────────────────
+sail artisan make:model Tweet --factory
+────────────────
+sail artisan make:model Tweet -f
+────────────────
+
+────────────────
+sail artisan make:model Tweet --seed
+────────────────
+sail artisan make:model Tweet -s
+────────────────
+
+
+■P061
+
+────────────────
+sail artisan make:model Tweet --controller
+────────────────
+sail artisan make:model Tweet -c
+────────────────
+
+────────────────
+sail artisan make:model Tweet -mfsc
+────────────────
+sail artisan make:model Tweet --all
+────────────────
+
+────────────────
+sail artisan make:model Tweet --pivot
+────────────────
+
+
+●app/Models/Tweet.php
+────────────────
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Tweet extends Model
+{
+    use HasFactory;
+}
+────────────────
+
+
+■P062
+
+────────────────
+class Tweet extends Model
+{
+    use HasFactory;
+    
+    protected $table = 'tweet';
+}
+────────────────
+
+────────────────
+protected $primaryKey = 'tweet_id';
+────────────────
+
+────────────────
+public $incrementing = false;
+────────────────
+
+
+■P063
+
+────────────────
+protected $keyType = 'string';
+────────────────
+
+────────────────
+public $timestamps = false;
+────────────────
+
+────────────────
+const CREATED_AT = 'creation_date';
+const UPDATED_AT = 'updated_date';
+────────────────
+
+
+────────────────
+sail artisan make:factory TweetFactory --model=Tweet
+────────────────
+
+
+■P064
+
+●database/factories/TweetFactory.php
+────────────────
+<?php
+
+namespace Database\Factories;
+
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+/**
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Tweet>
+ */
+class TweetFactory extends Factory
+{
+    /**
+     * Define the model's default state.
+     *
+     * @return array
+     */
+    public function definition()
+    {
+        return [
+            //
+        ];
+    }
+}
+────────────────
+
+
+●database/factories/TweetFactory.php
+────────────────
+    public function definition()
+    {
+        return [
+            'content' => $this->faker->realText(100)
+        ];
+    }
+────────────────
+
+
+■P065
+
+●config/app.php
+────────────────
+//    'faker_locale' => 'en_US',
+      'faker_locale' => 'ja_JP',
+────────────────
+
+
+
+●database/seeders/TweetsSeeder.php
+────────────────
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Database\Seeder;
+use App\Models\Tweet;
+
+class TweetsSeeder extends Seeder
+{
+    /**
+     * Run the database seeds.
+     *
+     * @return void
+     */
+    public function run()
+    {
+        Tweet::factory()->count(10)->create();
+    }
+}
+────────────────
+
+
+■P066
+
+────────────────
+sail artisan db:seed
+────────────────
+
+────────────────
+sail mysql
+────────────────
+
+────────────────
+use example_app;
+────────────────
+
+────────────────
+select * from tweets;
+────────────────
+
+
+■P067
+
+●app/Http/Controllers/Tweet/IndexController.php
+────────────────
+<?php
+
+namespace App\Http\Controllers\Tweet;
+
+use App\Http\Controllers\Controller;
+use App\Models\Tweet;
+use Illuminate\Http\Request;
+
+class IndexController extends Controller
+{
+    public function __invoke(Request $request)
+    {
+        $tweets = Tweet::all();
+        dd($tweets);
+        return view('tweet.index')
+            ->with('name', 'laravel')
+            ->with('version', '8');
+    }
+}
+────────────────
+
+
+■P068
+
+●app/Http/Controllers/Tweet/IndexController.php
+────────────────
+        $tweets = Tweet::all();
+        return view('tweet.index')
+            ->with('tweets', $tweets);
+────────────────
+
+
+■P069
+
+●resources/views/tweet/index.blade.php
+────────────────
+<body>
+    <h1>つぶやきアプリ</h1>
+    <div>
+    @foreach($tweets as $tweet)
+        <p>{{ $tweet->content }}</p>
+    @endforeach
+    </div>
+</body>
+────────────────
+

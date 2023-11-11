@@ -1,0 +1,818 @@
+■P111
+
+────────────────
+sail composer require laravel/breeze --dev
+────────────────
+
+────────────────
+sail artisan breeze:install
+────────────────
+
+
+●routes/web.php
+────────────────
+<?php
+
+use Illuminate\Support\Facades\Route;
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register web routes for your application. These
+| routes are loaded by the RouteServiceProvider within a group which
+| contains the "web" middleware group. Now create something great!
+|
+*/
+
+Route::get('/', function () {
+    return view('welcome');
+});
+
+// Sample
+Route::get('/sample', [\App\Http\Controllers\Sample\IndexController::class, 'show']);
+Route::get('/sample/{id}', [\App\Http\Controllers\Sample\IndexController::class, 'showId']);
+
+
+// Tweet
+Route::get('/tweet', \App\Http\Controllers\Tweet\IndexController::class)->name('tweet.index');
+Route::post('/tweet/create', \App\Http\Controllers\Tweet\CreateController::class)->name('tweet.create');
+Route::get('/tweet/update/{tweetId}', \App\Http\Controllers\Tweet\Update\IndexController::class)->name('tweet.update.index');
+Route::put('/tweet/update/{tweetId}', \App\Http\Controllers\Tweet\Update\PutController::class)->name('tweet.update.put');
+Route::delete('/tweet/delete/{tweetId}', \App\Http\Controllers\Tweet\DeleteController::class)->name('tweet.delete');
+
+Route::get('/dashboard', function () {
+    return view('dashboard');
+})->middleware(['auth'])->name('dashboard');
+
+require __DIR__.'/auth.php';
+────────────────
+
+■P112
+
+────────────────
+sail npm install
+────────────────
+
+────────────────
+sail npm run dev
+────────────────
+
+
+■P113
+
+●.gitignore
+────────────────
+/public/css
+/public/js
+────────────────
+
+
+■P114
+
+●routes/auth.php
+────────────────
+Route::middleware('guest')->group(function () {
+    Route::get('register', [RegisteredUserController::class, 'create'])
+                ->name('register');
+    …省略…
+});
+────────────────
+
+
+■P115
+
+────────────────
+sail artisan make:middleware SampleMiddleware
+────────────────
+
+
+●app/Http/Middleware/SampleMiddleware.php
+────────────────
+public function handle(Request $request, Closure $next)
+{
+    return $next($request);
+}
+────────────────
+
+
+●app/Http/Kernel.php
+────────────────
+class Kernel extends HttpKernel
+{
+        protected $middleware = [
+            /** アプリケーション全体に作用させたいミドルウェアを登録するときはここに記述する **/
+        ];
+
+        protected $routeMiddleware = [
+           /** 特定のルートについてのみ作用させたいミドルウェアを登録するときにはここに記述する **/
+           'sample' => \App\Http\Middleware\SampleMiddleware::class // 例
+        ]
+}
+────────────────
+
+
+■P116
+
+●app/Http/Middleware/SampleMiddleware.php
+────────────────
+public function handle(Request $request, Closure $next, ...$guards)
+{
+    /** 前に処理をはさみたい場合ここに記述する **/
+    return $next($request);
+    /** 後に処理をはさみたい場合ここに記述する **/
+}
+────────────────
+
+
+■P119
+
+●config/auth.php
+────────────────
+'guards' => [
+    'web' => [
+        'driver' => 'session',
+        'provider' => 'users',
+    ],
+
+    'api' => [
+        'driver' => 'token',
+        'provider' => 'users',
+        'hash' => false,
+    ],
+],
+
+'providers' => [
+    'users' => [
+        'driver' => 'eloquent',
+        'model' => App\Models\User::class,
+    ],
+],
+────────────────
+
+
+●config/auth.php
+────────────────
+'defaults' => [
+    'guard' => 'web',
+    'passwords' => 'users',
+],
+────────────────
+
+
+■P120
+
+
+●vendor/laravel/framework/src/Illuminate/Foundation/Exceptions/Handler.php
+────────────────
+    /**
+     * Render an exception into an HTTP response.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \Throwable  $e
+     * @return \Symfony\Component\HttpFoundation\Response
+     *
+     * @throws \Throwable
+     */
+    public function render($request, Throwable $e)
+    {
+        if (method_exists($e, 'render') && $response = $e->render($request)) {
+            return Router::toResponse($request, $response);
+        }
+
+        if ($e instanceof Responsable) {
+            return $e->toResponse($request);
+        }
+
+        $e = $this->prepareException($this->mapException($e));
+
+        if ($response = $this->renderViaCallbacks($request, $e)) {
+            return $response;
+        }
+
+        return match (true) {
+            $e instanceof HttpResponseException => $e->getResponse(),
+            $e instanceof AuthenticationException => $this->
+unauthenticated($request, $e), // ここがログインしていないときの例外処理
+            $e instanceof ValidationException => $this->
+convertValidationExceptionToResponse($e, $request),
+            default => $this->renderExceptionResponse($request, $e),
+        };
+    }
+────────────────
+
+
+■P122
+
+●vendor/laravel/framework/src/Illuminate/Foundation/Exceptions/Handler.php
+────────────────
+   /**
+     * Prepare exception for rendering.
+     *
+     * @param  \Throwable  $e
+     * @return \Throwable
+     */
+    protected function prepareException(Throwable $e)
+    {
+        return match (true) {
+            $e instanceof BackedEnumCaseNotFoundException => new NotFoundHttpException($e->getMessage(), $e),
+            $e instanceof ModelNotFoundException => new NotFoundHttpException($e->getMessage(), $e),
+            $e instanceof AuthorizationException => new AccessDeniedHttpException($e->getMessage(), $e),
+            $e instanceof TokenMismatchException => new HttpException(419, $e->getMessage(), $e),
+            $e instanceof SuspiciousOperationException => new NotFoundHttpException('Bad hostname provided.', $e),
+            $e instanceof RecordsNotFoundException => new NotFoundHttpException('Not found.', $e),
+            default => $e,
+        };
+    }
+────────────────
+
+
+■P123
+
+●vendor/laravel/framework/src/Illuminate/Foundation/Exceptions/Handler.php
+────────────────
+    /**
+     * Render an exception into /**
+     * Prepare a response for the given exception.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param      hrowable  $e
+     * @return \Symfony\Component\HttpFoundation\Response
+     */
+    protected function prepareResponse($request, Throwable $e)
+    {
+        // ここでLaravel用のエラーレスポンスに変換される
+        if (! $this->isHttpException($e) && config('app.debug')) {
+            return $this->toIlluminateResponse($this->convertExceptionToResponse($e), $e);
+        }
+
+        if (! $this->isHttpException($e)) {
+            $e = new HttpException(500, $e->getMessage());
+        }
+
+        return $this->toIlluminateResponse(
+            $this->renderHttpException($e), $e
+        );
+    }
+────────────────
+
+
+■P124
+
+●app/Providers/RouteServiceProvider.php
+────────────────
+public const HOME = '/tweet';
+────────────────
+
+
+■P125
+
+●routes/web.php
+────────────────
+Route::post('/tweet/create', \App\Http\Controllers\Tweet\CreateController::class)
+    ->middleware('auth')
+    ->name('tweet.create');
+────────────────
+
+
+●resources/views/tweet/index.blade.php
+────────────────
+    @auth
+        <div>
+            <p>投稿フォーム</p>
+            @if (session('feedback.success'))
+                <p style="color: green">{{ session('feedback.success') }}</p>
+            @endif
+            <form action="{{ route('tweet.create') }}" method="post">
+                @csrf
+                <label for="tweet-content">つぶやき</label>
+                <span>140文字まで</span>
+                <textarea id="tweet-content" type="text" name="tweet" placeholder="つぶやきを入力"></textarea>
+                @error('tweet')
+                <p style="color: red;">{{ $message }}</p>
+                @enderror
+                <button type="submit">投稿</button>
+            </form>
+        </div>
+    @endauth
+────────────────
+
+
+■P126
+
+────────────────
+sail artisan make:migration add_user_id_to_tweets
+────────────────
+
+
+●database/migrations/YYYY_～_add_user_id_to_tweets.php
+────────────────
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+class AddUserIdToTweets extends Migration
+{
+    /**
+     * Run the migrations.
+     *
+     * @return void
+     */
+    public function up()
+    {
+        Schema::table('tweets', function (Blueprint $table) {
+            $table->unsignedBigInteger('user_id')->after('id');
+            
+            // usersテーブルのidカラムにuser_idカラムを関連付けます。
+            $table->foreign('user_id')->references('id')->on('users');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     *
+     * @return void
+     */
+    public function down()
+    {
+        Schema::table('tweets', function (Blueprint $table) {
+            $table->dropForeign('tweets_user_id_foreign');
+            $table->dropColumn('user_id');
+        });
+    }
+}
+────────────────
+
+
+■P128
+
+────────────────
+sail artisan make:seeder UsersSeeder
+────────────────
+
+
+●database/seeders/UsersSeeder.php
+────────────────
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\User;
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Database\Seeder;
+
+class UsersSeeder extends Seeder
+{
+    /**
+     * Run the database seeds.
+     *
+     * @return void
+     */
+    public function run()
+    {
+        User::factory()->create();
+    }
+}
+────────────────
+
+
+■P129
+
+●database/factories/TweetFactory.php
+────────────────
+<?php
+
+namespace Database\Factories;
+
+use App\Models\Tweet;
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+class TweetFactory extends Factory
+{
+    /**
+     * The name of the factory's corresponding model.
+     *
+     * @var string
+     */
+    protected $model = Tweet::class;
+
+    /**
+     * Define the model's default state.
+     *
+     * @return array
+     */
+    public function definition()
+    {
+        return [
+            'user_id' => 1, // つぶやきを投稿したユーザーのIDをデフォルトで1とする
+            'content' => $this->faker->realText(100)
+        ];
+    }
+}
+────────────────
+
+
+■P130
+
+●database/seeders/DatabaseSeeder.php
+────────────────
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Database\Seeder;
+
+class DatabaseSeeder extends Seeder
+{
+    /**
+     * Seed the application's database.
+     *
+     * @return void
+     */
+    public function run()
+    {
+        $this->call([
+            UsersSeeder::class,
+            TweetsSeeder::class
+        ]);
+    }
+}
+────────────────
+
+────────────────
+sail artisan migrate:fresh --seed
+────────────────
+
+
+■P131
+
+●app/Http/Requests/Tweet/CreateRequest.php
+────────────────
+<?php
+
+namespace App\Http\Requests\Tweet;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class CreateRequest extends FormRequest
+{
+    /**
+     * Determine if the user is authorized to make this request.
+     *
+     * @return bool
+     */
+    public function authorize()
+    {
+        return true;
+    }
+
+    /**
+     * Get the validation rules that apply to the request.
+     *
+     * @return array
+     */
+    public function rules()
+    {
+        return [
+            'tweet' => 'required|max:140'
+        ];
+    }
+
+    // Requestクラスのuser関数で今自分がログインしているユーザーが取得できる
+    public function userId(): int
+    {
+        return $this->user()->id;
+    }
+
+    public function tweet(): string
+    {
+        return $this->input('tweet');
+    }
+}
+────────────────
+
+
+■P132
+
+●app/Http/Controllers/Tweet/CreateController.php
+────────────────
+<?php
+
+namespace App\Http\Controllers\Tweet;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Tweet\CreateRequest;
+use App\Models\Tweet;
+
+class CreateController extends Controller
+{
+    public function __invoke(CreateRequest $request)
+    {
+        $tweet = new Tweet;
+        $tweet->user_id = $request->userId(); // ここでUserIdを保存している
+        $tweet->content = $request->tweet();
+        $tweet->save();
+        return redirect()->route('tweet.index');
+    }
+}
+────────────────
+
+
+■P133
+
+●app/Models/User.php
+────────────────
+<?php
+
+namespace App\Models;
+
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+
+class User extends Authenticatable
+{
+    …省略…
+
+    public function tweets()
+    {
+        return $this->hasMany(Tweet::class);
+    }
+}
+────────────────
+
+
+■P134
+
+●app/Models/Tweet.php
+────────────────
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Tweet extends Model
+{
+    use HasFactory;
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+}
+────────────────
+
+
+●resources/views/tweet/index.blade.php
+────────────────
+<!doctype html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>つぶやきアプリ</title>
+</head>
+<body>
+    <h1>つぶやきアプリ</h1>
+    @auth
+    <div>
+        <p>投稿フォーム</p>
+        @if (session('feedback.success'))
+            <p style="color: green">{{ session('feedback.success') }}</p>
+        @endif
+        <form action="{{ route('tweet.create') }}" method="post">
+            @csrf
+            <label for="tweet-content">つぶやき</label>
+            <span>140文字まで</span>
+            <textarea id="tweet-content" type="text" name="tweet" placeholder="つぶやきを入力"></textarea>
+            @error('tweet')
+            <p style="color: red;">{{ $message }}</p>
+            @enderror
+            <button type="submit">投稿</button>
+        </form>
+    </div>
+    @endauth
+    <div>
+    @foreach($tweets as $tweet)
+        <details>
+              <summary>{{ $tweet->content }} by {{ $tweet->user->name }}</summary>
+            <div>
+                <a href="{{ route('tweet.update.index', ['tweetId' => $tweet->id]) }}">編集</a>
+                <form action="{{ route('tweet.delete', ['tweetId' => $tweet->id]) }}" method="post">
+                    @method('DELETE')
+                    @csrf
+                    <button type="submit">削除</button>
+                </form>
+            </div>
+        </details>
+    @endforeach
+    </div>
+</body>
+</html>
+────────────────
+
+
+■P136
+
+●routes/web.php
+────────────────
+Route::get('/tweet', \App\Http\Controllers\Tweet\IndexController::class)->name('tweet.index');
+Route::middleware('auth')->group(function () {
+    Route::post('/tweet/create', \App\Http\Controllers\Tweet\CreateController::class)
+        ->name('tweet.create'); //->middleware('auth')は削除
+    Route::get('/tweet/update/{tweetId}', \App\Http\Controllers\Tweet\Update\IndexController::class)->name('tweet.update.index');
+    Route::put('/tweet/update/{tweetId}', \App\Http\Controllers\Tweet\Update\PutController::class)->name('tweet.update.put');
+    Route::delete('/tweet/delete/{tweetId}', \App\Http\Controllers\Tweet\DeleteController::class)->name('tweet.delete');
+});
+────────────────
+
+
+■P137
+
+●app/Services/TweetService.php
+────────────────
+<?php
+
+namespace App\Services;
+
+use App\Models\Tweet;
+
+class TweetService
+{
+    public function getTweets()
+    {
+        return Tweet::orderBy('created_at', 'DESC')->get();
+    }
+    // 自分のtweetかどうかをチェックするメソッド
+    public function checkOwnTweet(int $userId, int $tweetId): bool
+    {
+        $tweet = Tweet::where('id', $tweetId)->first();
+        if (!$tweet) {
+            return false;
+        }
+
+        return $tweet->user_id === $userId;
+    }
+}
+────────────────
+
+
+■P138
+
+●app/Http/Controllers/Tweet/Update/IndexController.php
+────────────────
+<?php
+
+namespace App\Http\Controllers\Tweet\Update;
+
+use App\Http\Controllers\Controller;
+use App\Models\Tweet;
+use App\Services\TweetService;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+
+class IndexController extends Controller
+{
+    public function __invoke(Request $request, TweetService $tweetService)
+    {
+        $tweetId = (int) $request->route('tweetId');
+        if (!$tweetService->checkOwnTweet($request->user()->id, $tweetId)) {
+            throw new AccessDeniedHttpException();
+        }
+        
+        $tweet = Tweet::where('id', $tweetId)->firstOrFail();
+        return view('tweet.update')->with('tweet', $tweet);
+    }
+}
+────────────────
+
+
+■P139
+
+●app/Http/Controllers/Tweet/Update/PutController.php
+────────────────
+<?php
+
+namespace App\Http\Controllers\Tweet\Update;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Tweet\UpdateRequest;
+use App\Models\Tweet;
+use App\Services\TweetService;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+
+class PutController extends Controller
+{
+    public function __invoke(UpdateRequest $request, TweetService $tweetService)
+    {
+        if (!$tweetService->checkOwnTweet($request->user()->id, $request->id())) {
+            throw new AccessDeniedHttpException();
+        }
+        $tweet = Tweet::where('id', $request->id())->firstOrFail();
+        $tweet->content = $request->tweet();
+        $tweet->save();
+        return redirect()
+            ->route('tweet.update.index', ['tweetId' => $tweet->id])
+            ->with('feedback.success', "つぶやきを編集しました");
+    }
+}
+────────────────
+
+
+■P140
+
+●app/Http/Controllers/Tweet/DeleteController.php
+────────────────
+<?php
+
+namespace App\Http\Controllers\Tweet;
+
+use App\Http\Controllers\Controller;
+use App\Models\Tweet;
+use App\Services\TweetService;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+
+class DeleteController extends Controller
+{
+    public function __invoke(Request $request, TweetService $tweetService)
+    {
+        $tweetId = (int) $request->route('tweetId');
+        if (!$tweetService->checkOwnTweet($request->user()->id, $tweetId)) {
+            throw new AccessDeniedHttpException();
+        }
+        $tweet = Tweet::where('id', $tweetId)->firstOrFail();
+        $tweet->delete();
+        return redirect()
+            ->route('tweet.index')
+            ->with('feedback.success', "つぶやきを削除しました");
+    }
+}
+────────────────
+
+
+■P141
+
+●resources/views/tweet/index.blade.php
+────────────────
+<!doctype html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>つぶやきアプリ</title>
+</head>
+<body>
+    <h1>つぶやきアプリ</h1>
+    @auth
+    <div>
+        <p>投稿フォーム</p>
+        @if (session('feedback.success'))
+            <p style="color: green">{{ session('feedback.success') }}</p>
+        @endif
+        <form action="{{ route('tweet.create') }}" method="post">
+            @csrf
+            <label for="tweet-content">つぶやき</label>
+            <span>140文字まで</span>
+            <textarea id="tweet-content" type="text" name="tweet" placeholder="つぶやきを入力"></textarea>
+            @error('tweet')
+            <p style="color: red;">{{ $message }}</p>
+            @enderror
+            <button type="submit">投稿</button>
+        </form>
+    </div>
+    @endauth
+    <div>
+    @foreach($tweets as $tweet)
+        <details>
+            <summary>{{ $tweet->content }} by {{ $tweet->user->name }}
+</summary>
+            @if(\Illuminate\Support\Facades\Auth::id() === $tweet->user_id)
+                <div>
+                    <a href="{{ route('tweet.update.index', ['tweetId' => $tweet->id]) }}">編集</a>
+                    <form action="{{ route('tweet.delete', ['tweetId' => $tweet->id]) }}" method="post">
+                        @method('DELETE')
+                        @csrf
+                        <button type="submit">削除</button>
+                    </form>
+                </div>
+            @else
+                編集できません
+            @endif
+        </details>
+    @endforeach
+    </div>
+</body>
+</html>
+────────────────
+

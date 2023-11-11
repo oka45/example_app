@@ -1,0 +1,595 @@
+■P220
+
+────────────────
+sail artisan make:migration createImagesTable
+────────────────
+
+●20XX_XX_XX_XXXXXX_create_images_table.php
+────────────────
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     *
+     * @return void
+     */
+    public function up()
+    {
+        Schema::create('images', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     *
+     * @return void
+     */
+    public function down()
+    {
+        Schema::dropIfExists('images');
+    }
+}
+────────────────
+
+
+■P221
+
+────────────────
+sail artisan make:migration createTweetImagesTable
+────────────────
+
+
+■P222
+
+●20XX_XX_XX_XXXXXX_create_tweet_images_table.php
+────────────────
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     *
+     * @return void
+     */
+    public function up()
+    {
+        Schema::create('tweet_images', function (Blueprint $table) {
+            $table->foreignId('tweet_id')->constrained('tweets')->cascadeOnDelete();
+            $table->foreignId('image_id')->constrained('images')->cascadeOnDelete();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     *
+     * @return void
+     */
+    public function down()
+    {
+        Schema::dropIfExists('tweet_images');
+    }
+}
+────────────────
+
+
+■P223
+
+────────────────
+sail artisan migrate
+────────────────
+
+
+────────────────
+sail artisan make:model Image -f
+────────────────
+
+
+────────────────
+sail artisan make:model TweetImage --pivot
+────────────────
+
+
+■P224
+
+●database/factories/ImageFactory.php
+────────────────
+<?php
+
+namespace Database\Factories;
+
+use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Facades\Storage;
+
+class ImageFactory extends Factory
+{
+    /**
+     * Define the model's default state.
+     *
+     * @return array
+     */
+    public function definition()
+    {
+        // ディレクトリがなければ作成する
+        if (!Storage::exists('public/images')) {
+            Storage::makeDirectory('public/images');
+        }
+        return [
+            'name' => $this->faker->image(storage_path('app/public/images'), 640, 480, null, false)
+        ];
+    }
+}
+────────────────
+
+
+■P225
+
+────────────────
+sail artisan storage:link
+────────────────
+
+
+●app/Models/Tweet.php
+────────────────
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Tweet extends Model
+{
+    use HasFactory;
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+    public function images()
+    {
+        return $this->belongsToMany(Image::class, 'tweet_images')->using(TweetImage::class);
+    }
+}
+────────────────
+
+
+■P226
+
+●database/seeders/TweetsSeeder.php（全文）
+────────────────
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Database\Seeder;
+use App\Models\Tweet;
+use App\Models\Image;
+
+class TweetsSeeder extends Seeder
+{
+    /**
+     * Run the database seeds.
+     *
+     * @return void
+     */
+    public function run()
+    {
+        Tweet::factory()->count(10)->create()->each(fn($tweet) =>
+            Image::factory()->count(4)->create()->each(fn($image) =>
+                $tweet->images()->attach($image->id)
+            )
+        );
+    }
+}
+────────────────
+
+
+────────────────
+sail artisan db:seed --class=TweetsSeeder
+────────────────
+
+
+■P227
+
+────────────────
+sail mysql
+────────────────
+
+────────────────
+use example_app;
+────────────────
+
+────────────────
+select * from images;
+────────────────
+
+────────────────
+select * from tweet_images;
+────────────────
+
+
+■P228
+
+●app/Services/TweetService.php
+────────────────
+class TweetService
+{
+    public function getTweets()
+    {
+        return Tweet::with('images')->orderBy('created_at', 'DESC')->get();
+    }
+────────────────
+
+
+●app\Http\Controllers\Tweet\IndexController.php
+────────────────
+        $tweets = $tweetService->getTweets();
+        dump($tweets);
+        app(\App\Exceptions\Handler::class)->render(request(), throw new \Error('dump report.'));
+        return view('tweet.index')
+            ->with('tweets', $tweets);
+────────────────
+
+
+■P230
+
+●app\Http\Controllers\Tweet\IndexController.php（元の状態）
+────────────────
+        $tweets = $tweetService->getTweets();
+        return view('tweet.index')
+            ->with('tweets', $tweets);
+────────────────
+
+
+■P231
+
+●resources/views/components/tweet/images.blade.php
+────────────────
+@props([
+    'images' => []
+])
+
+@if(count($images) > 0)
+<div x-data="{}" class="px-2">
+    <div class="flex justify-center -mx-2">
+        @foreach($images as $image)
+        <div class="w-1/6 px-2 mt-5">
+            <div class="bg-gray-400">
+                <a @click="$dispatch('img-modal', {  imgModalSrc: '{{ asset('storage/images/' . $image->name)  }}' })" class="cursor-pointer">
+                    <img alt="{{ $image->name }}" class="object-fit w-full" src="{{ asset('storage/images/' . $image->name) }}">
+                </a>
+            </div>
+        </div>
+        @endforeach
+    </div>
+</div>
+@endif
+────────────────
+
+
+■P232
+
+●resources/views/components/tweet/images.blade.php
+────────────────
+@once
+    <div x-data="{ imgModal : false, imgModalSrc : '' }">
+        <div
+            @img-modal.window="imgModal = true; imgModalSrc = $event.detail.imgModalSrc;"
+            x-cloak
+            x-show="imgModal"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 transform"
+            x-transition:enter-end="opacity-100 transform"
+            x-transition:leave="transition ease-in duration-300"
+            x-transition:leave-start="opacity-100 transform"
+            x-transition:leave-end="opacity-0 transform"
+            x-on:click.away="imgModalSrc = ''"
+            class="p-2 fixed w-full h-100 inset-0 z-50 overflow-hidden flex justify-center items-center bg-black bg-opacity-75">
+            <div @click.away="imgModal = ''" class="flex flex-col max-w-3xl max-h-full overflow-auto">
+                <div class="z-50">
+                    <button @click="imgModal = ''" class="float-right pt-2 pr-2 outline-none focus:outline-none">
+                        <svg class="fill-current text-white h-5 w-5" xmlns="<http://www.w3.org/2000/svg>" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-2">
+                    <img
+                        class="object-contain h-1/2-screen"
+                        :alt="imgModalSrc"
+                        :src="imgModalSrc">
+                </div>
+            </div>
+        </div>
+    </div>
+    @push('css')
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+    @endpush
+@endonce
+────────────────
+
+
+■P233
+
+●resources/views/components/tweet/list.blade.php
+────────────────
+@props([
+    'tweets' => []
+])
+<div class="bg-white rounded-md shadow-lg mt-5 mb-5">
+    <ul>
+        @foreach($tweets as $tweet)
+        <li class="border-b last:border-b-0 border-gray-200 p-4 flex items-start justify-between">
+            <div>
+                <span class="inline-block rounded-full text-gray-600 bg-gray-100 px-2 py-1 text-xs mb-2">{{ $tweet->user->name }}</span>
+                <p class="text-gray-600">{!! nl2br(e($tweet->content)) !!}</p>
+                <x-tweet.images :images="$tweet->images"/>
+            </div>
+            <div>
+                <x-tweet.options :tweetId="$tweet->id" :userId="$tweet->user_id"></x-tweet.options>
+            </div>
+        </li>
+        @endforeach
+    </ul>
+</div>
+────────────────
+
+
+■P235
+
+●app/Http/Requests/Tweet/CreateRequest.php
+────────────────
+<?php
+
+namespace App\Http\Requests\Tweet;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class CreateRequest extends FormRequest
+{
+…省略…
+    public function rules()
+    {
+        return [
+            'tweet' => 'required|max:140',
+            'images' => 'array|max:4',
+            'images.*' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
+        ];
+    }
+    …省略…
+    public function images(): array
+    {
+        return $this->file('images', []);
+    }
+}
+────────────────
+
+
+■P236
+
+●app/Services/TweetService.php
+────────────────
+<?php
+
+namespace App\Services;
+
+use App\Models\Tweet;
+use Carbon\Carbon;
+use App\Models\Image;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+
+…省略…
+
+    public function saveTweet(int $userId, string $content, array $images)
+    {
+        DB::transaction(function () use ($userId, $content, $images) {
+            $tweet = new Tweet;
+            $tweet->user_id = $userId;
+            $tweet->content = $content;
+            $tweet->save();
+            foreach ($images as $image) {
+                Storage::putFile('public/images', $image);
+                $imageModel = new Image();
+                $imageModel->name = $image->hashName();
+                $imageModel->save();
+                $tweet->images()->attach($imageModel->id);
+            }
+        });
+    }
+}
+────────────────
+
+
+■P237
+
+●app/Http/Controllers/Tweet/CreateController.php
+────────────────
+<?php
+
+namespace App\Http\Controllers\Tweet;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Tweet\CreateRequest;
+use App\Models\Tweet;
+use App\Services\TweetService;
+
+class CreateController extends Controller
+{
+    …省略…
+    public function __invoke(CreateRequest $request, TweetService $tweetService)
+    {
+        $tweetService->saveTweet(
+            $request->userId(),
+            $request->tweet(),
+            $request->images()
+        );
+        return redirect()->route('tweet.index');
+    }
+}
+────────────────
+
+
+■P238
+
+●resources/views/components/tweet/form/images.blade.php
+────────────────
+<div x-data="inputFormHandler()" class="my-2">
+    <template x-for="(field, i) in fields" :key="i">
+        <div class="w-full flex my-2">
+            <label :for="field.id" class="border border-gray-300 rounded-md p-2 w-full bg-white cursor-pointer">
+                <input type="file" accept="image/*" class="sr-only" :id="field.id" name="images[]" @change="fields[i].file = $event.target.files[0]">
+                <span x-text="field.file ? field.file.name : '画像を選択'" class="text-gray-700"></span>
+            </label>
+            <button type="reset" @click="removeField(i)" class="p-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500 hover:text-red-700" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                </svg>
+            </button>
+        </div>
+    </template>
+
+    <template x-if="fields.length < 4">
+        <button type="button" @click="addField()" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-gray-500 hover:bg-gray-600">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+            </svg>
+            <span>画像を追加</span>
+        </button>
+    </template>
+</div>
+────────────────
+
+
+■P239
+
+●resources/views/components/tweet/form/images.blade.php
+────────────────
+<script>
+function inputFormHandler() {
+  return {
+    fields: [],
+    addField() {
+      const i = this.fields.length;
+      this.fields.push({
+        file: '',
+        id: `input-image-${i}`
+      });
+    },
+    removeField(index) {
+      this.fields.splice(index, 1);
+    }
+  }
+}
+</script>
+────────────────
+
+
+■P240
+
+●resources/views/components/tweet/form/post.blade.php
+────────────────
+@auth
+<div class="p-4">
+    <form action="{{ route('tweet.create') }}" method="post" enctype="multipart/form-data">
+        @csrf
+        <div class="mt-1">
+            <textarea name="tweet" rows="3" class="focus:ring-blue-400 focus:border-blue-400 mt-1 block w-full sm:text-sm border border-gray-300 rounded-md p-2" placeholder="つぶやきを入力">
+</textarea>
+        </div>
+        <p class="mt-2 text-sm text-gray-500">
+            140文字まで
+        </p>
+        <x-tweet.form.images></x-tweet.form.images>
+
+        @error('tweet')
+        <x-alert.error>{{ $message }}</x-alert.error>
+        @enderror
+        …省略…
+    </form>
+</div>
+@endauth
+────────────────
+
+
+■P242
+
+●app/Services/TweetService.php
+────────────────
+…省略…
+class TweetService
+{
+    …省略…
+    public function deleteTweet(int $tweetId)
+    {
+        DB::transaction(function () use ($tweetId) {
+            $tweet = Tweet::where('id', $tweetId)->firstOrFail();
+            $tweet->images()->each(function ($image) use ($tweet){
+                $filePath = 'public/images/' . $image->name;
+                if(Storage::exists($filePath)){
+                    Storage::delete($filePath);
+                }
+                $tweet->images()->detach($image->id);
+                $image->delete();
+            });
+    
+            $tweet->delete();
+        });
+    }
+}
+────────────────
+
+
+■P243
+
+●app/Http/Controllers/Tweet/DeleteController.php（全文）
+────────────────
+<?php
+
+namespace App\Http\Controllers\Tweet;
+
+use App\Http\Controllers\Controller;
+use App\Models\Tweet;
+use App\Services\TweetService;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+
+
+class DeleteController extends Controller
+{
+    /**
+     * Handle the incoming request.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function __invoke(Request $request, TweetService $tweetService)
+    {
+        $tweetId = (int) $request->route('tweetId');
+        if (!$tweetService->checkOwnTweet($request->user()->id, $tweetId)) {
+            throw new AccessDeniedHttpException();
+        }
+        $tweetService->deleteTweet($tweetId);
+        return redirect()
+            ->route('tweet.index')
+            ->with('feedback.success', "つぶやきを削除しました");
+    }
+}
+────────────────

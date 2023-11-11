@@ -1,0 +1,511 @@
+■P205
+
+────────────────
+sail artisan make:command SampleCommand
+────────────────
+
+
+●app/Console/Commands/SampleCommand.php
+────────────────
+<?php
+
+namespace App\Console\Commands;
+
+use Illuminate\Console\Command;
+
+class SampleCommand extends Command
+{
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $signature = 'command:name';
+
+    /**
+     * The console command description.
+     *
+     * @var string
+     */
+    protected $description = 'Command description';
+
+    /**
+     * Create a new command instance.
+     *
+     * @return void
+     */
+    public function __construct()
+    {
+        parent::__construct();
+    }
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    public function handle()
+    {
+        return 0;
+    }
+}
+────────────────
+
+
+■P206
+
+●app/Console/Commands/SampleCommand.php
+────────────────
+<?php
+
+namespace App\Console\Commands;
+
+use Illuminate\Console\Command;
+
+class SampleCommand extends Command
+{
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $signature = 'sample-command';
+
+    /**
+     * The console command description.
+     *
+     * @var string
+     */
+    protected $description = 'Sample Command';
+
+    /**
+     * Create a new command instance.
+     *
+     * @return void
+     */
+    public function __construct()
+    {
+        parent::__construct();
+    }
+
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    public function handle()
+    {
+        echo 'このコマンドはサンプルです。';
+        return 0;
+    }
+}
+────────────────
+
+
+■P207
+
+────────────────
+sail artisan list
+────────────────
+
+
+■P208
+
+────────────────
+sail artisan sample-command
+────────────────
+
+
+●app/Console/Kernel.php
+────────────────
+<?php
+
+namespace App\Console;
+
+use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+
+class Kernel extends ConsoleKernel
+{
+    /**
+     * Define the application's command schedule.
+     *
+     * @param  \Illuminate\Console\Scheduling\Schedule  $schedule
+     * @return void
+     */
+    protected function schedule(Schedule $schedule)
+    {
+        // 毎分
+        $schedule->command('sample-command')->everyMinute();
+        // 毎時
+        $schedule->command('sample-command')->hourly();
+        // 毎時8分
+        $schedule->command('sample-command')->hourlyAt(8);
+        // 毎日
+        $schedule->command('sample-command')->daily();
+        // 毎日13時
+        $schedule->command('sample-command')->dailyAt('13:00');
+        // 毎日3:15(cron表記)
+        $schedule->command('sample-command')->cron('15 3 * * *');
+    }
+
+    /**
+     * Register the commands for the application.
+     *
+     * @return void
+     */
+    protected function commands()
+    {
+        $this->load(__DIR__.'/Commands');
+
+        require base_path('routes/console.php');
+    }
+}
+────────────────
+
+
+■P210
+
+────────────────
+sail artisan schedule:list
+────────────────
+
+●config/app.php
+────────────────
+   /*
+    |-----------------------------------------------------------------------
+    | Application Timezone
+    |-----------------------------------------------------------------------
+    |
+    | …省略…
+    |
+    */
+
+    'timezone' => 'Asia/Tokyo',
+────────────────
+
+
+■P211
+
+────────────────
+sail artisan schedule:run
+────────────────
+
+
+●app/Console/Kernel.php（全文）
+────────────────
+<?php
+
+namespace App\Console;
+
+use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+
+class Kernel extends ConsoleKernel
+{
+    /**
+     * Define the application's command schedule.
+     *
+     * @param  \Illuminate\Console\Scheduling\Schedule  $schedule
+     * @return void
+     */
+    protected function schedule(Schedule $schedule)
+    {
+        // 毎分
+        $schedule->command('sample-command')->everyMinute()
+            ->emailOutputTo('info@example.com');
+        // 毎時
+        $schedule->command('sample-command')->hourly();
+        // 毎時8分
+        $schedule->command('sample-command')->hourlyAt(8);
+        // 毎日
+        $schedule->command('sample-command')->daily();
+        // 毎日13時
+        $schedule->command('sample-command')->dailyAt('13:00');
+        // 毎日3:15(cron表記)
+        $schedule->command('sample-command')->cron('15 3 * * *');
+
+    }
+
+    /**
+     * Register the commands for the application.
+     *
+     * @return void
+     */
+    protected function commands()
+    {
+        $this->load(__DIR__.'/Commands');
+
+        require base_path('routes/console.php');
+    }
+}
+────────────────
+
+
+■P212
+
+────────────────
+sail artisan schedule:run
+────────────────
+
+
+────────────────
+sail artisan make:mail DailyTweetCount
+────────────────
+
+
+■P213
+
+●app/Mail/DailyTweetCount.php
+────────────────
+<?php
+
+namespace App\Mail;
+
+use App\Models\User;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Mail\Mailable;
+use Illuminate\Queue\SerializesModels;
+
+class DailyTweetCount extends Mailable implements ShouldQueue
+{
+    use Queueable, SerializesModels;
+
+    public User $toUser;
+    public int $count;
+
+    /**
+     * Create a new message instance.
+     *
+     * @return void
+     */
+    public function __construct(User $toUser, int $count)
+    {
+        $this->toUser = $toUser;
+        $this->count = $count;
+    }
+
+    /**
+     * Build the message.
+     *
+     * @return $this
+     */
+    public function build()
+    {
+        return $this->subject("昨日は{$this->count}件のつぶやきが追加されました！")
+            ->markdown('email.daily_tweet_count');
+    }
+}
+────────────────
+
+
+■P214
+
+●resources/views/email/daily_tweet_count.blade.php
+────────────────
+@component('mail::message')
+
+# 昨日は{{ $count }}件のつぶやきが追加されました！
+
+{{ $toUser->name }}さんこんにちは！
+
+昨日は{{ $count }}件のつぶやきが追加されましたよ！最新のつぶやきを見に行きましょう。
+
+@component('mail::button', ['url' => route('tweet.index')])
+    つぶやきを見に行く
+@endcomponent
+
+@endcomponent
+────────────────
+
+
+────────────────
+sail artisan make:command SendDailyTweetCountMail
+────────────────
+
+
+●app/Console/Commands/SendDailyTweetCountMail.php
+────────────────
+<?php
+
+namespace App\Console\Commands;
+
+use App\Mail\DailyTweetCount;
+use App\Models\User;
+use App\Services\TweetService;
+use Illuminate\Console\Command;
+use Illuminate\Contracts\Mail\Mailer;
+
+class SendDailyTweetCountMail extends Command
+{
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $signature = 'mail:send-daily-tweet-count-mail';
+
+    /**
+     * The console command description.
+     *
+     * @var string
+     */
+    protected $description = '前日のつぶやき数を集計してつぶやきを促すメールを送ります。';
+
+    private TweetService $tweetService;
+    private Mailer $mailer;
+ 
+    /**
+     * Create a new command instance.
+     *
+     * @return void
+     */
+    public function __construct(TweetService $tweetService, Mailer $mailer)
+    {
+        parent::__construct();
+        $this->tweetService = $tweetService;
+        $this->mailer = $mailer;
+    }
+
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    public function handle()
+    {
+        $tweetCount = $this->tweetService->countYesterdayTweets();
+
+        $users = User::get();
+
+        foreach ($users as $user) {
+            $this->mailer->to($user->email)
+                ->send(new DailyTweetCount($user, $tweetCount));
+        }
+
+        return 0;
+    }
+}
+────────────────
+
+
+■P216
+
+●app/Services/TweetService.php（全文）
+────────────────
+<?php
+
+namespace App\Services;
+
+use App\Models\Tweet;
+use Carbon\Carbon;
+
+class TweetService
+{
+    public function getTweets()
+    {
+        return Tweet::orderBy('created_at', 'DESC')->get();
+    }
+
+    // 自分のtweetかどうかをチェックするメソッド
+    public function checkOwnTweet(int $userId, int $tweetId): bool
+    {
+        $tweet = Tweet::where('id', $tweetId)->first();
+        if (!$tweet) {
+            return false;
+        }
+
+        return $tweet->user_id === $userId;
+    }
+    public function countYesterdayTweets(): int
+    {
+        return Tweet::whereDate('created_at', '>=', Carbon::yesterday()->toDateTimeString())
+            ->whereDate('created_at', '<', Carbon::today()->toDateTimeString())
+            ->count();
+    }
+}
+
+────────────────
+
+
+■P217
+
+●database/factories/TweetFactory.php（全文）
+────────────────
+<?php
+
+namespace Database\Factories;
+
+use Illuminate\Database\Eloquent\Factories\Factory;
+use Carbon\Carbon;
+
+/**
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Tweet>
+ */
+class TweetFactory extends Factory
+{
+    /**
+     * Define the model's default state.
+     *
+     * @return array<string, mixed>
+     */
+    public function definition()
+    {
+        return [
+            'user_id' => 1, // つぶやきを投稿したユーザーのIDをデフォルトで1とする
+            'content' => $this->faker->realText(100),
+            'created_at' => Carbon::now()->yesterday()
+        ];
+    }
+}
+────────────────
+
+
+
+────────────────
+sail artisan migrate:fresh --seed
+────────────────
+
+────────────────
+sail artisan mail:send-daily-tweet-count-mail
+────────────────
+
+
+■P218
+
+●app/Console/Kernel.php（全文）
+────────────────
+<?php
+
+namespace App\Console;
+
+use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+
+class Kernel extends ConsoleKernel
+{
+    /**
+     * Define the application's command schedule.
+     *
+     * @param  \Illuminate\Console\Scheduling\Schedule  $schedule
+     * @return void
+     */
+    protected function schedule(Schedule $schedule)
+    {
+        $schedule->command('mail:send-daily-tweet-count-mail')
+            ->dailyAt('11:00');
+    }
+
+    /**
+     * Register the commands for the application.
+     *
+     * @return void
+     */
+    protected function commands()
+    {
+        $this->load(__DIR__.'/Commands');
+
+        require base_path('routes/console.php');
+    }
+}
+────────────────
